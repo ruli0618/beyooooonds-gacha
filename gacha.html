@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <title>BEYOOOOONDS ビヨスコープガチャ</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
     body { font-family: Arial, sans-serif; text-align: center; padding: 30px; background-color: #000; color: #fff; }
     h1 { font-size: 22px; }
@@ -99,6 +101,9 @@
     #syncModal .sync-actions { margin-top:8px; text-align:right; }
     #syncModal .sync-actions button { margin-left:8px; padding:6px 12px; font-size:13px; cursor:pointer; }
     #syncModal .modal-close { text-align:right; margin-top:16px; }
+    #qrCodeContainer { text-align:center; margin-top:8px; }
+    #qrCodeContainer img { background:#fff; padding:8px; border-radius:6px; max-width:100%; height:auto; }
+    #syncModal input[type=file] { font-size:12px; color:#ccc; }
 </style>
 </head>
 <body>
@@ -135,6 +140,18 @@
     <p>他の端末で発行したコードをここに貼り付けてください。</p>
     <textarea id="syncCodeIn" placeholder="ここにコードを貼り付け"></textarea>
     <div class="sync-actions"><button id="restoreCodeButton">読み込む</button></div>
+
+    <h3>QRコードで保存</h3>
+    <p>獲得数とコレクション進捗を画像で保存できます（引き継ぎの巻き戻し履歴は含まれません）。</p>
+    <div id="qrCodeContainer"></div>
+    <div class="sync-actions">
+      <button id="showQrButton">QRコードを表示</button>
+      <button id="downloadQrButton" style="display:none;">画像として保存</button>
+    </div>
+
+    <h3>QRコード画像を読み込む</h3>
+    <p>保存したQRコード画像を選択してください。</p>
+    <input type="file" id="qrFileInput" accept="image/*">
 
     <div class="modal-close"><button id="closeSyncButton">閉じる</button></div>
   </div>
@@ -331,6 +348,88 @@
     } catch (e) {
       alert("コードが正しくありません。");
     }
+  });
+
+  // QRコードは容量が限られるため、獲得数とコレクション進捗のみの
+  // コンパクトな形式（履歴は含まない）でエンコードする
+  function encodeCompactState(){
+    const payload = {
+      c: counts,
+      o: {
+        SR: items.SR.map(it => ownedCounts[it.file] || 0),
+        R:  items.R.map(it => ownedCounts[it.file] || 0),
+        N:  items.N.map(it => ownedCounts[it.file] || 0)
+      }
+    };
+    return JSON.stringify(payload);
+  }
+
+  function applyCompactState(text){
+    const payload = JSON.parse(text);
+    if (!payload || !payload.c || !payload.o) throw new Error("invalid qr code");
+    counts = payload.c;
+    ["SR", "R", "N"].forEach(rarity => {
+      items[rarity].forEach((it, idx) => {
+        const n = (payload.o[rarity] && payload.o[rarity][idx]) || 0;
+        if (n > 0) ownedCounts[it.file] = n; else delete ownedCounts[it.file];
+      });
+    });
+    saveState();
+    updateCounter();
+    if (histEl.style.display === "block") renderHistory();
+    if (collEl.style.display === "block") renderCollection();
+  }
+
+  const qrCodeContainer = document.getElementById("qrCodeContainer");
+  const downloadQrButton = document.getElementById("downloadQrButton");
+
+  document.getElementById("showQrButton").addEventListener("click", () => {
+    try {
+      const qr = qrcode(0, "L");
+      qr.addData(encodeCompactState());
+      qr.make();
+      qrCodeContainer.innerHTML = qr.createImgTag(4);
+      downloadQrButton.style.display = "inline-block";
+    } catch (e) {
+      alert("QRコードの作成に失敗しました。");
+    }
+  });
+
+  downloadQrButton.addEventListener("click", () => {
+    const img = qrCodeContainer.querySelector("img");
+    if (!img) return;
+    const a = document.createElement("a");
+    a.href = img.src;
+    a.download = "beyooooonds-gacha-qr.png";
+    a.click();
+  });
+
+  document.getElementById("qrFileInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const result = jsQR(imageData.data, imageData.width, imageData.height);
+      URL.revokeObjectURL(img.src);
+      if (!result){
+        alert("QRコードを読み取れませんでした。");
+        return;
+      }
+      try {
+        applyCompactState(result.data);
+        alert("読み込みました！");
+        syncModal.style.display = "none";
+      } catch (err) {
+        alert("QRコードの内容が正しくありません。");
+      }
+    };
+    img.src = URL.createObjectURL(file);
   });
 
   document.getElementById("closeSyncButton").addEventListener("click", () => {
