@@ -21,8 +21,7 @@
     }
     .overlay img { max-width: 130px; max-height: 130px; object-fit:contain; filter: drop-shadow(2px 2px 6px #000); }
     .overlay-text {
-        font-size:12px; font-weight:bold; text-shadow:2px 2px 4px #000; text-align:center;
-        background:rgba(0,0,0,0.55); padding:4px 10px; border-radius:6px;
+        font-size:12px; font-weight:bold; color:#fff; text-shadow:2px 2px 4px #000; text-align:center;
         width:100%; box-sizing:border-box;
     }
     .counter-overlay {
@@ -35,14 +34,6 @@
     .video-controls button {
         margin:0 8px; padding:8px 16px; font-size:14px; cursor:pointer;
     }
-    .white-text { color:white; }
-    .gold-text  { color:gold; }
-    .rainbow-text {
-        background: linear-gradient(to right, red, orange, yellow, green, cyan, blue, violet);
-        -webkit-background-clip: text; color:transparent;
-        animation: rainbow 3s infinite;
-    }
-    @keyframes rainbow { 0%{filter:hue-rotate(0deg);} 100%{filter:hue-rotate(360deg);} }
     #history {
         display:none; margin:20px auto; max-width:500px;
         background:rgba(255,255,255,0.1); padding:10px; border-radius:10px; text-align:left;
@@ -173,7 +164,6 @@
     const pool = items[rarity];
     const item = pool[Math.floor(Math.random()*pool.length)];
     const label = item.member ? `${item.member}\n${rarity}-${item.name}` : `${rarity}-${item.name}`;
-    const cls = rarity === "SR" ? "rainbow-text" : rarity === "R" ? "gold-text" : "white-text";
 
     videoEl.src = "scene_2.mp4";
     videoEl.loop = false;
@@ -186,7 +176,7 @@
       videoEl.loop = true;
       videoEl.play();
       setTimeout(() => {
-        overlayTxt.innerHTML = `<span class="${cls}">${label}</span>`;
+        overlayTxt.innerText = label;
 
         const reveal = () => {
           overlayEl.style.opacity = 1;
@@ -213,10 +203,7 @@
   document.getElementById("showHistoryButton").addEventListener("click", () => {
     histEl.style.display = histEl.style.display === "block" ? "none" : "block";
     if (histEl.style.display === "block"){
-      histEl.innerHTML = history.map(h=>{
-        const cls = h.rarity === "SR" ? "rainbow-text" : h.rarity === "R" ? "gold-text" : "white-text";
-        return `<div class="${cls}">${h.label.replace("\n"," ")}</div>`;
-      }).join("");
+      histEl.innerHTML = history.map(h => `<div>${h.label.replace("\n"," ")}</div>`).join("");
     }
   });
 
