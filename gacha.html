@@ -40,6 +40,8 @@
         max-height: 300px; overflow-y:auto;
     }
     #history div { padding: 2px 0; }
+    #history .hist-row { display:flex; align-items:center; gap:10px; padding:4px 0; }
+    #history .hist-row img { width:44px; height:44px; object-fit:contain; flex-shrink:0; background:rgba(255,255,255,0.06); border-radius:4px; }
     #history .white-text { color:white; }
     #history .gold-text  { color:gold; }
     #history .rainbow-text {
@@ -64,6 +66,7 @@
   <div id="counter" class="counter-overlay">SR:0個 / R:0個 / N:0個</div>
   <div class="video-controls">
     <button id="showHistoryButton">獲得アイテム一覧</button>
+    <button id="toggleImagesButton">画像表示:ON</button>
     <button id="resetButton">リセット</button>
   </div>
 </div>
@@ -164,12 +167,35 @@
   let history = saved.history;
   let drawing = false;
 
+  const SHOW_IMAGES_KEY = "beyooooonds-gacha-show-images";
+  let showImages = localStorage.getItem(SHOW_IMAGES_KEY) !== "false";
+
   const videoEl    = document.getElementById("gachaVideo");
   const overlayEl  = document.getElementById("overlay");
   const overlayImg = document.getElementById("overlayImg");
   const overlayTxt = document.getElementById("overlayText");
   const counterEl  = document.getElementById("counter");
   const histEl     = document.getElementById("history");
+  const toggleImagesButton = document.getElementById("toggleImagesButton");
+
+  function renderHistory(){
+    histEl.innerHTML = history.map(h => {
+      const cls = h.rarity === "SR" ? "rainbow-text" : h.rarity === "R" ? "gold-text" : "white-text";
+      const text = h.label.replace("\n", " ");
+      if (showImages && h.file){
+        return `<div class="hist-row"><img src="${encodePath(h.file)}" alt=""><span class="${cls}">${text}</span></div>`;
+      }
+      return `<div class="${cls}">${text}</div>`;
+    }).join("");
+  }
+
+  toggleImagesButton.addEventListener("click", () => {
+    showImages = !showImages;
+    localStorage.setItem(SHOW_IMAGES_KEY, showImages);
+    toggleImagesButton.innerText = `画像表示:${showImages ? "ON" : "OFF"}`;
+    if (histEl.style.display === "block") renderHistory();
+  });
+  toggleImagesButton.innerText = `画像表示:${showImages ? "ON" : "OFF"}`;
 
   function updateCounter(){ counterEl.innerText = `SR:${counts.SR}個 / R:${counts.R}個 / N:${counts.N}個`; }
 
@@ -204,7 +230,7 @@
         const reveal = () => {
           overlayEl.style.opacity = 1;
           counts[rarity]++;
-          history.push({ label, rarity });
+          history.push({ label, rarity, file: item.file });
           updateCounter();
           saveState();
           drawing = false;
@@ -226,12 +252,7 @@
 
   document.getElementById("showHistoryButton").addEventListener("click", () => {
     histEl.style.display = histEl.style.display === "block" ? "none" : "block";
-    if (histEl.style.display === "block"){
-      histEl.innerHTML = history.map(h => {
-        const cls = h.rarity === "SR" ? "rainbow-text" : h.rarity === "R" ? "gold-text" : "white-text";
-        return `<div class="${cls}">${h.label.replace("\n"," ")}</div>`;
-      }).join("");
-    }
+    if (histEl.style.display === "block") renderHistory();
   });
 
   document.getElementById("resetButton").addEventListener("click", () => {
