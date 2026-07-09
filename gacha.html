@@ -67,11 +67,17 @@
     }
     .coll-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(72px, 1fr)); gap:10px; }
     .coll-card { text-align:center; }
+    .coll-thumb { position:relative; }
     .coll-card img, .coll-card .locked {
         width:100%; aspect-ratio:1/1; object-fit:contain; border-radius:6px;
         background:rgba(255,255,255,0.06); box-sizing:border-box;
     }
     .coll-card .locked { display:flex; align-items:center; justify-content:center; font-size:22px; color:#555; }
+    .count-badge {
+        position:absolute; bottom:2px; right:2px;
+        background:rgba(0,0,0,0.75); color:#fff; font-size:10px; font-weight:bold;
+        padding:1px 5px; border-radius:8px;
+    }
     .coll-card .name { font-size:9px; margin-top:3px; line-height:1.25; word-break:break-all; color:#eee; }
     .coll-card .name.locked-name { color:#555; }
 </style>
@@ -179,20 +185,24 @@
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
       if (saved && saved.counts && Array.isArray(saved.history)){
-        return { counts: saved.counts, history: saved.history, owned: Array.isArray(saved.owned) ? saved.owned : [] };
+        let ownedCounts = saved.ownedCounts && typeof saved.ownedCounts === "object" ? saved.ownedCounts : {};
+        if (Array.isArray(saved.owned)){
+          saved.owned.forEach(file => { ownedCounts[file] = ownedCounts[file] || 1; });
+        }
+        return { counts: saved.counts, history: saved.history, ownedCounts };
       }
     } catch (e) {}
-    return { counts: { SR:0, R:0, N:0 }, history: [], owned: [] };
+    return { counts: { SR:0, R:0, N:0 }, history: [], ownedCounts: {} };
   }
 
   function saveState(){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ counts, history, owned: [...owned] }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ counts, history, ownedCounts }));
   }
 
   const saved = loadState();
   let counts = saved.counts;
   let history = saved.history;
-  let owned = new Set(saved.owned);
+  let ownedCounts = saved.ownedCounts;
   let drawing = false;
 
   const videoEl    = document.getElementById("gachaVideo");
@@ -217,12 +227,13 @@
   function renderCollection(){
     collEl.innerHTML = ["SR", "R", "N"].map(rarity => {
       const pool = items[rarity];
-      const ownedCount = pool.filter(it => owned.has(it.file)).length;
+      const ownedCount = pool.filter(it => ownedCounts[it.file]).length;
       const cls = rarity === "SR" ? "rainbow-text" : rarity === "R" ? "gold-text" : "white-text";
       const cards = pool.map(it => {
         const label = it.member ? `${it.member} ${it.name}` : it.name;
-        if (owned.has(it.file)){
-          return `<div class="coll-card"><img src="${encodePath(it.file)}" alt=""><div class="name">${label}</div></div>`;
+        const count = ownedCounts[it.file] || 0;
+        if (count > 0){
+          return `<div class="coll-card"><div class="coll-thumb"><img src="${encodePath(it.file)}" alt=""><span class="count-badge">×${count}</span></div><div class="name">${label}</div></div>`;
         }
         return `<div class="coll-card"><div class="locked">？</div><div class="name locked-name">？？？</div></div>`;
       }).join("");
@@ -269,7 +280,7 @@
           overlayEl.style.opacity = 1;
           counts[rarity]++;
           history.push({ label, rarity, file: item.file });
-          owned.add(item.file);
+          ownedCounts[item.file] = (ownedCounts[item.file] || 0) + 1;
           updateCounter();
           saveState();
           drawing = false;
@@ -297,7 +308,7 @@
   document.getElementById("resetButton").addEventListener("click", () => {
     counts = { SR:0, R:0, N:0 };
     history = [];
-    owned = new Set();
+    ownedCounts = {};
     updateCounter();
     saveState();
     histEl.style.display = "none";
