@@ -10,7 +10,7 @@
     .video-frame {
         width: 100%; max-width: 420px; aspect-ratio: 16/9;
         background: #000; position: relative; overflow: visible;
-        margin: 0 auto 240px; display: block;
+        margin: 0 auto 200px; display: block;
     }
     .video-frame video { width: 100%; height: 100%; object-fit: cover; z-index: 0; position: relative; }
     .overlay {
@@ -29,7 +29,7 @@
         background:rgba(0,0,0,0.6); color:#fff; padding:6px 12px; border-radius:8px; font-size:16px; z-index:2;
     }
     .video-controls {
-        position:absolute; bottom:-228px; left:50%; transform:translateX(-50%);
+        position:absolute; bottom:-180px; left:50%; transform:translateX(-50%);
         display:flex; flex-direction:column; align-items:center; gap:8px; z-index:2;
     }
     .video-controls button {
@@ -91,7 +91,6 @@
   <div class="video-controls">
     <button id="showHistoryButton">獲得アイテム一覧</button>
     <button id="showCollectionButton">コレクション</button>
-    <button id="toggleImagesButton">画像表示:ON</button>
     <button id="resetButton">リセット</button>
   </div>
 </div>
@@ -196,9 +195,6 @@
   let owned = new Set(saved.owned);
   let drawing = false;
 
-  const SHOW_IMAGES_KEY = "beyooooonds-gacha-show-images";
-  let showImages = localStorage.getItem(SHOW_IMAGES_KEY) !== "false";
-
   const videoEl    = document.getElementById("gachaVideo");
   const overlayEl  = document.getElementById("overlay");
   const overlayImg = document.getElementById("overlayImg");
@@ -206,13 +202,12 @@
   const counterEl  = document.getElementById("counter");
   const histEl     = document.getElementById("history");
   const collEl     = document.getElementById("collection");
-  const toggleImagesButton = document.getElementById("toggleImagesButton");
 
   function renderHistory(){
     histEl.innerHTML = history.map(h => {
       const cls = h.rarity === "SR" ? "rainbow-text" : h.rarity === "R" ? "gold-text" : "white-text";
       const text = h.label.replace("\n", " ");
-      if (showImages && h.file){
+      if (h.file){
         return `<div class="hist-row"><img src="${encodePath(h.file)}" alt=""><span class="${cls}">${text}</span></div>`;
       }
       return `<div class="${cls}">${text}</div>`;
@@ -239,14 +234,6 @@
     collEl.style.display = collEl.style.display === "block" ? "none" : "block";
     if (collEl.style.display === "block") renderCollection();
   });
-
-  toggleImagesButton.addEventListener("click", () => {
-    showImages = !showImages;
-    localStorage.setItem(SHOW_IMAGES_KEY, showImages);
-    toggleImagesButton.innerText = `画像表示:${showImages ? "ON" : "OFF"}`;
-    if (histEl.style.display === "block") renderHistory();
-  });
-  toggleImagesButton.innerText = `画像表示:${showImages ? "ON" : "OFF"}`;
 
   function updateCounter(){ counterEl.innerText = `SR:${counts.SR}個 / R:${counts.R}個 / N:${counts.N}個`; }
 
