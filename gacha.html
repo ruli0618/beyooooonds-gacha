@@ -70,10 +70,12 @@
     }
     .coll-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(72px, 1fr)); gap:10px; }
     .coll-card { text-align:center; }
-    .coll-thumb { position:relative; }
-    .coll-card img, .coll-card .locked {
-        width:100%; aspect-ratio:1/1; object-fit:contain; border-radius:6px;
-        background:rgba(255,255,255,0.06); box-sizing:border-box;
+    .coll-thumb, .coll-card .locked {
+        position:relative; width:100%; aspect-ratio:1/1; border-radius:6px;
+        background-color:rgba(255,255,255,0.06); box-sizing:border-box;
+    }
+    .coll-thumb {
+        background-size:contain; background-position:center; background-repeat:no-repeat;
     }
     .coll-card .locked { display:flex; align-items:center; justify-content:center; font-size:22px; color:#555; }
     .count-badge {
@@ -290,7 +292,7 @@
         const label = it.member ? `${it.member} ${it.name}` : it.name;
         const count = ownedCounts[it.file] || 0;
         if (count > 0){
-          return `<div class="coll-card"><div class="coll-thumb"><img src="${encodePath(it.file)}" alt=""><span class="count-badge">×${count}</span></div><div class="name">${label}</div></div>`;
+          return `<div class="coll-card"><div class="coll-thumb" style="background-image:url('${encodePath(it.file)}')"><span class="count-badge">×${count}</span></div><div class="name">${label}</div></div>`;
         }
         return `<div class="coll-card"><div class="locked">？</div><div class="name locked-name">？？？</div></div>`;
       }).join("");
