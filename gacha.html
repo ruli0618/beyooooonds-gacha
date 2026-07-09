@@ -10,7 +10,7 @@
     .video-frame {
         width: 100%; max-width: 420px; aspect-ratio: 16/9;
         background: #000; position: relative; overflow: visible;
-        margin: 0 auto 200px; display: block;
+        margin: 0 auto 250px; display: block;
     }
     .video-frame video { width: 100%; height: 100%; object-fit: cover; z-index: 0; position: relative; }
     .overlay {
@@ -29,7 +29,7 @@
         background:rgba(0,0,0,0.6); color:#fff; padding:6px 12px; border-radius:8px; font-size:16px; z-index:2;
     }
     .video-controls {
-        position:absolute; bottom:-180px; left:50%; transform:translateX(-50%);
+        position:absolute; bottom:-228px; left:50%; transform:translateX(-50%);
         display:flex; flex-direction:column; align-items:center; gap:8px; z-index:2;
     }
     .video-controls button {
@@ -80,6 +80,25 @@
     }
     .coll-card .name { font-size:9px; margin-top:3px; line-height:1.25; word-break:break-all; color:#eee; }
     .coll-card .name.locked-name { color:#555; }
+    #syncModal {
+        display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+        background:rgba(0,0,0,0.8); align-items:center; justify-content:center; z-index:999;
+    }
+    #syncModal .modal-content {
+        background:#181818; padding:20px; border-radius:10px;
+        width:90%; max-width:440px; color:#fff; text-align:left;
+        max-height:85vh; overflow-y:auto; box-sizing:border-box;
+    }
+    #syncModal h3 { margin:16px 0 6px; font-size:15px; }
+    #syncModal h3:first-child { margin-top:0; }
+    #syncModal p { font-size:12px; color:#aaa; margin:0 0 8px; }
+    #syncModal textarea {
+        width:100%; box-sizing:border-box; height:70px; font-size:11px;
+        background:#000; color:#0f0; border:1px solid #444; border-radius:6px; padding:6px; resize:vertical;
+    }
+    #syncModal .sync-actions { margin-top:8px; text-align:right; }
+    #syncModal .sync-actions button { margin-left:8px; padding:6px 12px; font-size:13px; cursor:pointer; }
+    #syncModal .modal-close { text-align:right; margin-top:16px; }
 </style>
 </head>
 <body>
@@ -97,12 +116,29 @@
   <div class="video-controls">
     <button id="showHistoryButton">獲得アイテム一覧</button>
     <button id="showCollectionButton">コレクション</button>
+    <button id="showSyncButton">引き継ぎコード</button>
     <button id="resetButton">リセット</button>
   </div>
 </div>
 
 <div id="history"></div>
 <div id="collection"></div>
+
+<div id="syncModal">
+  <div class="modal-content">
+    <h3>このコードをコピーして保存</h3>
+    <p>別の端末やブラウザで「読み込む」に貼り付けると、この続きから再開できます。</p>
+    <textarea id="syncCodeOut" readonly></textarea>
+    <div class="sync-actions"><button id="copyCodeButton">コピー</button></div>
+
+    <h3>コードを読み込む</h3>
+    <p>他の端末で発行したコードをここに貼り付けてください。</p>
+    <textarea id="syncCodeIn" placeholder="ここにコードを貼り付け"></textarea>
+    <div class="sync-actions"><button id="restoreCodeButton">読み込む</button></div>
+
+    <div class="modal-close"><button id="closeSyncButton">閉じる</button></div>
+  </div>
+</div>
 
 <script>
   const rarities = [
@@ -244,6 +280,58 @@
   document.getElementById("showCollectionButton").addEventListener("click", () => {
     collEl.style.display = collEl.style.display === "block" ? "none" : "block";
     if (collEl.style.display === "block") renderCollection();
+  });
+
+  function encodeSyncCode(){
+    const json = JSON.stringify({ counts, history, ownedCounts });
+    return btoa(unescape(encodeURIComponent(json)));
+  }
+
+  function decodeSyncCode(code){
+    const json = decodeURIComponent(escape(atob(code.trim())));
+    const data = JSON.parse(json);
+    if (!data || !data.counts || !Array.isArray(data.history)) throw new Error("invalid code");
+    return data;
+  }
+
+  const syncModal   = document.getElementById("syncModal");
+  const syncCodeOut = document.getElementById("syncCodeOut");
+  const syncCodeIn  = document.getElementById("syncCodeIn");
+
+  document.getElementById("showSyncButton").addEventListener("click", () => {
+    syncCodeOut.value = encodeSyncCode();
+    syncCodeIn.value = "";
+    syncModal.style.display = "flex";
+  });
+
+  document.getElementById("copyCodeButton").addEventListener("click", () => {
+    syncCodeOut.select();
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(syncCodeOut.value);
+    } else {
+      document.execCommand("copy");
+    }
+  });
+
+  document.getElementById("restoreCodeButton").addEventListener("click", () => {
+    try {
+      const data = decodeSyncCode(syncCodeIn.value);
+      counts = data.counts;
+      history = data.history;
+      ownedCounts = data.ownedCounts && typeof data.ownedCounts === "object" ? data.ownedCounts : {};
+      saveState();
+      updateCounter();
+      if (histEl.style.display === "block") renderHistory();
+      if (collEl.style.display === "block") renderCollection();
+      alert("読み込みました！");
+      syncModal.style.display = "none";
+    } catch (e) {
+      alert("コードが正しくありません。");
+    }
+  });
+
+  document.getElementById("closeSyncButton").addEventListener("click", () => {
+    syncModal.style.display = "none";
   });
 
   function updateCounter(){ counterEl.innerText = `SR:${counts.SR}個 / R:${counts.R}個 / N:${counts.N}個`; }
