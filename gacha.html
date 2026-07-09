@@ -137,8 +137,23 @@
     preloadedImages.push(img);
   });
 
-  let counts = { SR:0, R:0, N:0 };
-  let history = [];
+  const STORAGE_KEY = "beyooooonds-gacha-state";
+
+  function loadState(){
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (saved && saved.counts && Array.isArray(saved.history)) return saved;
+    } catch (e) {}
+    return { counts: { SR:0, R:0, N:0 }, history: [] };
+  }
+
+  function saveState(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ counts, history }));
+  }
+
+  const saved = loadState();
+  let counts = saved.counts;
+  let history = saved.history;
   let drawing = false;
 
   const videoEl    = document.getElementById("gachaVideo");
@@ -183,6 +198,7 @@
           counts[rarity]++;
           history.push({ label, rarity });
           updateCounter();
+          saveState();
           drawing = false;
         };
 
@@ -211,6 +227,7 @@
     counts = { SR:0, R:0, N:0 };
     history = [];
     updateCounter();
+    saveState();
     histEl.style.display = "none";
     histEl.innerHTML = "";
     overlayEl.style.opacity = 0;
