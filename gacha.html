@@ -311,7 +311,21 @@
   saveCollectionImageButton.addEventListener("click", () => {
     saveCollectionImageButton.disabled = true;
     saveCollectionImageButton.innerText = "保存中...";
-    html2canvas(collEl, { backgroundColor: "#000000" }).then(canvas => {
+    html2canvas(collEl, {
+      backgroundColor: "#000000",
+      scale: 3,
+      onclone: (clonedDoc) => {
+        // html2canvasはbackground-clip:textの虹色グラデーション文字に対応していないため
+        // 書き出し時だけ単色（金色）に置き換える
+        clonedDoc.querySelectorAll(".rainbow-text").forEach(el => {
+          el.style.background = "none";
+          el.style.webkitBackgroundClip = "initial";
+          el.style.backgroundClip = "initial";
+          el.style.color = "gold";
+          el.style.webkitTextFillColor = "gold";
+        });
+      }
+    }).then(canvas => {
       const a = document.createElement("a");
       a.href = canvas.toDataURL("image/png");
       a.download = "beyooooonds-collection.png";
