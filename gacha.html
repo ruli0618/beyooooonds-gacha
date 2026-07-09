@@ -288,7 +288,10 @@
   }
 
   function decodeSyncCode(code){
-    const json = decodeURIComponent(escape(atob(code.trim())));
+    // LINE等のメッセージアプリは折り返し用の不可視文字（ゼロ幅スペース等）を
+    // 挿入することがあるため、base64として無効な文字は全て取り除く
+    const cleaned = code.replace(/[^A-Za-z0-9+/=]/g, "");
+    const json = decodeURIComponent(escape(atob(cleaned)));
     const data = JSON.parse(json);
     if (!data || !data.counts || !Array.isArray(data.history)) throw new Error("invalid code");
     return data;
