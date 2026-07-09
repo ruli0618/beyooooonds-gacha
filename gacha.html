@@ -136,6 +136,16 @@
     ]
   };
 
+  function encodePath(file){ return encodeURIComponent(file).replace(/%2F/g, "/"); }
+
+  // 全アイテム画像を先読みしてキャッシュしておく（抽選時の表示遅延を防ぐ）
+  const preloadedImages = [];
+  Object.values(items).flat().forEach(item => {
+    const img = new Image();
+    img.src = encodePath(item.file);
+    preloadedImages.push(img);
+  });
+
   let counts = { SR:0, R:0, N:0 };
   let history = [];
   let drawing = false;
@@ -176,13 +186,23 @@
       videoEl.loop = true;
       videoEl.play();
       setTimeout(() => {
-        overlayImg.src = encodeURIComponent(item.file).replace(/%2F/g, "/");
         overlayTxt.innerHTML = `<span class="${cls}">${label}</span>`;
-        overlayEl.style.opacity = 1;
-        counts[rarity]++;
-        history.push({ label, rarity });
-        updateCounter();
-        drawing = false;
+
+        const reveal = () => {
+          overlayEl.style.opacity = 1;
+          counts[rarity]++;
+          history.push({ label, rarity });
+          updateCounter();
+          drawing = false;
+        };
+
+        const src = encodePath(item.file);
+        if (overlayImg.src.endsWith(src) && overlayImg.complete) {
+          reveal();
+        } else {
+          overlayImg.onload = reveal;
+          overlayImg.src = src;
+        }
       }, 200);
     };
     videoEl.play();
