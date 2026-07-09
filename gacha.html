@@ -283,6 +283,7 @@
           ownedCounts[item.file] = (ownedCounts[item.file] || 0) + 1;
           updateCounter();
           saveState();
+          if (histEl.style.display === "block") renderHistory();
           if (collEl.style.display === "block") renderCollection();
           drawing = false;
         };
