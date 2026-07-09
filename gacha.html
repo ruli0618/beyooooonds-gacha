@@ -40,6 +40,14 @@
         max-height: 300px; overflow-y:auto;
     }
     #history div { padding: 2px 0; }
+    #history .white-text { color:white; }
+    #history .gold-text  { color:gold; }
+    #history .rainbow-text {
+        background: linear-gradient(to right, red, orange, yellow, green, cyan, blue, violet);
+        -webkit-background-clip: text; color:transparent;
+        animation: rainbow 3s infinite;
+    }
+    @keyframes rainbow { 0%{filter:hue-rotate(0deg);} 100%{filter:hue-rotate(360deg);} }
 </style>
 </head>
 <body>
@@ -219,7 +227,10 @@
   document.getElementById("showHistoryButton").addEventListener("click", () => {
     histEl.style.display = histEl.style.display === "block" ? "none" : "block";
     if (histEl.style.display === "block"){
-      histEl.innerHTML = history.map(h => `<div>${h.label.replace("\n"," ")}</div>`).join("");
+      histEl.innerHTML = history.map(h => {
+        const cls = h.rarity === "SR" ? "rainbow-text" : h.rarity === "R" ? "gold-text" : "white-text";
+        return `<div class="${cls}">${h.label.replace("\n"," ")}</div>`;
+      }).join("");
     }
   });
 
