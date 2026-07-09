@@ -10,7 +10,7 @@
     .video-frame {
         width: 100%; max-width: 420px; aspect-ratio: 16/9;
         background: #000; position: relative; overflow: visible;
-        margin: 0 auto 200px; display: block;
+        margin: 0 auto 240px; display: block;
     }
     .video-frame video { width: 100%; height: 100%; object-fit: cover; z-index: 0; position: relative; }
     .overlay {
@@ -29,7 +29,7 @@
         background:rgba(0,0,0,0.6); color:#fff; padding:6px 12px; border-radius:8px; font-size:16px; z-index:2;
     }
     .video-controls {
-        position:absolute; bottom:-180px; left:50%; transform:translateX(-50%);
+        position:absolute; bottom:-228px; left:50%; transform:translateX(-50%);
         display:flex; flex-direction:column; align-items:center; gap:8px; z-index:2;
     }
     .video-controls button {
@@ -51,6 +51,29 @@
         animation: rainbow 3s infinite;
     }
     @keyframes rainbow { 0%{filter:hue-rotate(0deg);} 100%{filter:hue-rotate(360deg);} }
+    #collection {
+        display:none; margin:20px auto; max-width:600px;
+        background:rgba(255,255,255,0.1); padding:14px; border-radius:10px; text-align:left;
+        max-height: 480px; overflow-y:auto;
+    }
+    #collection h3 { margin:14px 0 8px; font-size:15px; }
+    #collection h3:first-child { margin-top:0; }
+    #collection .white-text { color:white; }
+    #collection .gold-text  { color:gold; }
+    #collection .rainbow-text {
+        background: linear-gradient(to right, red, orange, yellow, green, cyan, blue, violet);
+        -webkit-background-clip: text; color:transparent;
+        animation: rainbow 3s infinite;
+    }
+    .coll-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(72px, 1fr)); gap:10px; }
+    .coll-card { text-align:center; }
+    .coll-card img, .coll-card .locked {
+        width:100%; aspect-ratio:1/1; object-fit:contain; border-radius:6px;
+        background:rgba(255,255,255,0.06); box-sizing:border-box;
+    }
+    .coll-card .locked { display:flex; align-items:center; justify-content:center; font-size:22px; color:#555; }
+    .coll-card .name { font-size:9px; margin-top:3px; line-height:1.25; word-break:break-all; color:#eee; }
+    .coll-card .name.locked-name { color:#555; }
 </style>
 </head>
 <body>
@@ -67,12 +90,14 @@
   <div id="counter" class="counter-overlay">SR:0個 / R:0個 / N:0個</div>
   <div class="video-controls">
     <button id="showHistoryButton">獲得アイテム一覧</button>
+    <button id="showCollectionButton">コレクション</button>
     <button id="toggleImagesButton">画像表示:ON</button>
     <button id="resetButton">リセット</button>
   </div>
 </div>
 
 <div id="history"></div>
+<div id="collection"></div>
 
 <script>
   const rarities = [
@@ -154,18 +179,21 @@
   function loadState(){
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      if (saved && saved.counts && Array.isArray(saved.history)) return saved;
+      if (saved && saved.counts && Array.isArray(saved.history)){
+        return { counts: saved.counts, history: saved.history, owned: Array.isArray(saved.owned) ? saved.owned : [] };
+      }
     } catch (e) {}
-    return { counts: { SR:0, R:0, N:0 }, history: [] };
+    return { counts: { SR:0, R:0, N:0 }, history: [], owned: [] };
   }
 
   function saveState(){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ counts, history }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ counts, history, owned: [...owned] }));
   }
 
   const saved = loadState();
   let counts = saved.counts;
   let history = saved.history;
+  let owned = new Set(saved.owned);
   let drawing = false;
 
   const SHOW_IMAGES_KEY = "beyooooonds-gacha-show-images";
@@ -177,6 +205,7 @@
   const overlayTxt = document.getElementById("overlayText");
   const counterEl  = document.getElementById("counter");
   const histEl     = document.getElementById("history");
+  const collEl     = document.getElementById("collection");
   const toggleImagesButton = document.getElementById("toggleImagesButton");
 
   function renderHistory(){
@@ -189,6 +218,27 @@
       return `<div class="${cls}">${text}</div>`;
     }).join("");
   }
+
+  function renderCollection(){
+    collEl.innerHTML = ["SR", "R", "N"].map(rarity => {
+      const pool = items[rarity];
+      const ownedCount = pool.filter(it => owned.has(it.file)).length;
+      const cls = rarity === "SR" ? "rainbow-text" : rarity === "R" ? "gold-text" : "white-text";
+      const cards = pool.map(it => {
+        const label = it.member ? `${it.member} ${it.name}` : it.name;
+        if (owned.has(it.file)){
+          return `<div class="coll-card"><img src="${encodePath(it.file)}" alt=""><div class="name">${label}</div></div>`;
+        }
+        return `<div class="coll-card"><div class="locked">？</div><div class="name locked-name">？？？</div></div>`;
+      }).join("");
+      return `<h3><span class="${cls}">${rarity} ${ownedCount}/${pool.length}</span></h3><div class="coll-grid">${cards}</div>`;
+    }).join("");
+  }
+
+  document.getElementById("showCollectionButton").addEventListener("click", () => {
+    collEl.style.display = collEl.style.display === "block" ? "none" : "block";
+    if (collEl.style.display === "block") renderCollection();
+  });
 
   toggleImagesButton.addEventListener("click", () => {
     showImages = !showImages;
@@ -232,6 +282,7 @@
           overlayEl.style.opacity = 1;
           counts[rarity]++;
           history.push({ label, rarity, file: item.file });
+          owned.add(item.file);
           updateCounter();
           saveState();
           drawing = false;
@@ -259,10 +310,13 @@
   document.getElementById("resetButton").addEventListener("click", () => {
     counts = { SR:0, R:0, N:0 };
     history = [];
+    owned = new Set();
     updateCounter();
     saveState();
     histEl.style.display = "none";
     histEl.innerHTML = "";
+    collEl.style.display = "none";
+    collEl.innerHTML = "";
     overlayEl.style.opacity = 0;
     overlayImg.src = "";
     overlayTxt.innerHTML = "";
